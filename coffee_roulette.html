@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>커피 룰렛</title>
+  <title>커피/디저트 룰렛</title>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -67,4 +67,129 @@
     <canvas id="wheel" width="360" height="360"></canvas>
     <div id="pointer"></div>
   </div>
-  <button id="spinBtn">룰렛 돌리기
+  <button id="spinBtn">룰렛 돌리기</button>
+  <div id="result"></div>
+  <div class="note">※ 1인 1회 제한 (같은 브라우저 기준)</div>
+
+  <script>
+    const items = [
+      "빽다방 아샷추",          // 가장 확률 높음
+      "카페음료+디저트(메가)",
+      "스타벅스",
+      "버거킹 불고기와퍼",
+      "던킨"                    // 가장 확률 낮음
+    ];
+
+    // 가중치: 아샷추 > 메가 > 스벅 > 버거킹 > 던킨
+    const weights = [5, 4, 3, 2, 1];
+
+    const canvas = document.getElementById("wheel");
+    const ctx = canvas.getContext("2d");
+    const spinBtn = document.getElementById("spinBtn");
+    const resultDiv = document.getElementById("result");
+
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    const sliceAngle = (2 * Math.PI) / items.length;
+
+    // 파스텔 색 5개
+    const colors = ["#ffb3ba", "#bae1ff", "#baffc9", "#ffffba", "#ffdfba"];
+
+    function drawWheel() {
+      const radius = canvas.width / 2;
+      const centerX = radius;
+      const centerY = radius;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < items.length; i++) {
+        const startAngle = i * sliceAngle - Math.PI / 2;
+        const endAngle = startAngle + sliceAngle;
+
+        // 조각
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 텍스트
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#000";
+        ctx.font = "16px sans-serif";
+        ctx.fillText(items[i], radius * 0.6, 5);
+        ctx.restore();
+      }
+
+      // 테두리
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    drawWheel();
+
+    // 가중치 랜덤
+    function weightedRandomIndex() {
+      let r = Math.random() * totalWeight;
+      for (let i = 0; i < weights.length; i++) {
+        if (r < weights[i]) return i;
+        r -= weights[i];
+      }
+      return weights.length - 1;
+    }
+
+    function hasPlayedToday() {
+      const playedKey = "coffeeRoulettePlayedDate";
+      const today = new Date().toISOString().slice(0, 10);
+      const saved = localStorage.getItem(playedKey);
+      return saved === today;
+    }
+
+    function setPlayedToday() {
+      const playedKey = "coffeeRoulettePlayedDate";
+      const today = new Date().toISOString().slice(0, 10);
+      localStorage.setItem(playedKey, today);
+    }
+
+    let currentRotation = 0;
+
+    function spin() {
+      if (hasPlayedToday()) {
+        alert("오늘은 이미 한 번 참여하셨습니다! (같은 브라우저 기준)");
+        return;
+      }
+
+      const selectedIndex = weightedRandomIndex();
+      const extraTurns = 5;
+      const sliceDeg = 360 / items.length;
+
+      const targetDeg =
+        extraTurns * 360 + (sliceDeg * selectedIndex + sliceDeg / 2);
+
+      currentRotation = targetDeg;
+
+      canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+      spinBtn.disabled = true;
+      resultDiv.textContent = "";
+
+      setTimeout(() => {
+        const picked = items[selectedIndex];
+        resultDiv.textContent = "당첨: " + picked + " 🎉";
+        setPlayedToday();
+      }, 3100);
+    }
+
+    spinBtn.addEventListener("click", spin);
+  </script>
+</body>
+</html>
